@@ -1,0 +1,7 @@
+tensorflow>=2.5,<2.6
+tensorflow_text>=2.5<2.6
+tensorflow-addons>=0.13
+tensorflow-datasets
+
+absl-py
+tfds-korean>=0.3.0*
