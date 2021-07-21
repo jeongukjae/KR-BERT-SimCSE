@@ -1,6 +1,6 @@
-tensorflow>=2.5,<2.6
-tensorflow_text>=2.5<2.6
-tensorflow-addons>=0.13
+tensorflow>=2.4,<2.5
+tensorflow-text>=2.4,<2.5
+tensorflow-addons
 tensorflow-datasets
 
 absl-py
