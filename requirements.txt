@@ -4,4 +4,5 @@ tensorflow-addons
 tensorflow-datasets
 
 absl-py
-tfds-korean>=0.3.0*
+tfds-korean>=0.3.0
+scipy

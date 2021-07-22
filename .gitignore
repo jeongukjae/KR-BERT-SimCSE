@@ -128,4 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-model-checkpoints
+/model-checkpoints
+/models
+/logs
+/.vscode/settings.json

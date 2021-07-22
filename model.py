@@ -102,11 +102,10 @@ class BertModelForSimCSE(BertModel):
 
         self.temperature = temperature
         self.cosine_similarity = CosineSimilarity(dtype="float32")
-        self.softmax = tf.keras.layers.Softmax(name="softmax", dtype="float32")
 
     def call(self, input_tensor):
-        r1 = super().call(input_tensor)
-        r2 = super().call(input_tensor)
+        r1 = super().call(input_tensor)["pooled_output"]
+        r2 = super().call(input_tensor)["pooled_output"]
 
         r1_shape = tf.shape(r1)
 
@@ -123,8 +122,14 @@ class BertModelForSimCSE(BertModel):
         else:
             r2 = tf.expand_dims(r2, 0)
 
-        score = self.cosine_similarity([tf.expand_dims(r1, 1), r2]) / self.temperature
-        return self.softmax(score)
+        return self.cosine_similarity([tf.expand_dims(r1, 1), r2]) / self.temperature
+
+    @tf.function
+    def calculate_similarity(self, sentence1, sentence2):
+        r1 = super().call(sentence1)["sequence_output"][:, 0]
+        r2 = super().call(sentence2)["sequence_output"][:, 0]
+
+        return self.cosine_similarity([r1, r2])
 
 
 class CosineSimilarity(tf.keras.layers.Layer):
