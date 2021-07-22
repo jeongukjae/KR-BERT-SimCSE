@@ -32,7 +32,7 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 ### KorSTS (dev set results)
 
-|model|||Spearman R|
+|model|||100 X Spearman correlation|
 |---|---|---|--:|
 |KR-BERT base SimCSE|unsupervised                           |bi encoding|79.99|
 |||||
@@ -46,7 +46,7 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 ### KorSTS (test set results)
 
-|model|||Spearman R|
+|model|||100 X Spearman correlation|
 |---|---|---|--:|
 |KR-BERT base SimCSE|unsupervised                           |bi encoding   |73.25|
 |||||
@@ -62,7 +62,7 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 ### KLUE STS (dev set results)
 
-|model|||Pearson R|
+|model|||100 X Pearson's correlation|
 |---|---|---|--:|
 |KR-BERT base SimCSE|unsupervised|bi encoding   |74.45|
 |||||
