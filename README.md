@@ -1,6 +1,6 @@
 # KR-BERT-SimCSE
 
-Implementing SimCSE using TensorFlow 2 and KR-BERT.
+Implementing SimCSE([paper](https://arxiv.org/abs/2104.08821), [official repository](https://github.com/princeton-nlp/SimCSE)) using TensorFlow 2 and [KR-BERT](https://github.com/snunlp/KR-BERT).
 
 ## Training
 
@@ -13,6 +13,7 @@ python train_unsupervised.py --mixed_precision
 I used [Korean Wikipedia Corpus](https://github.com/jeongukjae/korean-wikipedia-corpus) that is divided into sentences in advance. (Check out [tfds-korean catalog page](https://jeongukjae.github.io/tfds-korean/datasets/korean_wikipedia_corpus.html) for details)
 
 * Settings
+    * KR-BERT character
     * peak learning rate 3e-5
     * batch size 64
     * Total steps: 25,000
@@ -33,6 +34,7 @@ python train_supervised.py --mixed_precision
 I used [KorNLI](https://github.com/kakaobrain/KorNLUDatasets) for supervised training. (Check out [tfds-korean catalog page](https://jeongukjae.github.io/tfds-korean/datasets/kornli.html))
 
 * Settings
+    * KR-BERT character
     * batch size 128
     * epoch 3
     * peak learning rate 5e-5
