@@ -104,25 +104,40 @@ class BertModelForSimCSE(BertModel):
         self.cosine_similarity = CosineSimilarity(dtype="float32")
 
     def call(self, input_tensor):
-        r1 = super().call(input_tensor)["pooled_output"]
-        r2 = super().call(input_tensor)["pooled_output"]
+        if isinstance(input_tensor, dict):  # unsupervised
+            r1 = super().call(input_tensor)["pooled_output"]
+            r2 = super().call(input_tensor)["pooled_output"]
+            z = None
+        else:  # supervised
+            r1 = super().call(input_tensor[0])["pooled_output"]
+            r2 = super().call(input_tensor[1])["pooled_output"]
 
-        r1_shape = tf.shape(r1)
+            z = super().call(input_tensor[2])["pooled_output"]
+            z = self._reduce_representations(z)
+
+        r2 = self._reduce_representations(r2)
+        if z is not None:
+            r2 = tf.concat([r2, z], axis=1)
+
+        return self.cosine_similarity([tf.expand_dims(r1, 1), r2]) / self.temperature
+
+    def _reduce_representations(self, representations):
+        hidden_size = tf.shape(representations)[-1]
 
         ctx = tf.distribute.get_replica_context()
         if ctx and ctx.num_replicas_in_sync != 1:
             print(f"reduce reprsentations, num_replicas_in_sync: {ctx.num_replicas_in_sync}, and id: {ctx.replica_id_in_sync_group}")
-            r2 = tf.where(
+            representations = tf.where(
                 (tf.range(0, ctx.num_replicas_in_sync) == ctx.replica_id_in_sync_group)[:, tf.newaxis, tf.newaxis],
-                tf.expand_dims(r2, 0),
-                tf.expand_dims(tf.zeros_like(r2), 0),
+                tf.expand_dims(representations, 0),
+                tf.expand_dims(tf.zeros_like(representations), 0),
             )
-            [r2] = ctx.all_reduce(tf.distribute.ReduceOp.SUM, [r2])
-            r2 = tf.reshape(r2, [1, -1, r1_shape[-1]])
+            [representations] = ctx.all_reduce(tf.distribute.ReduceOp.SUM, [representations])
+            representations = tf.reshape(representations, [1, -1, hidden_size])
         else:
-            r2 = tf.expand_dims(r2, 0)
+            representations = tf.expand_dims(representations, 0)
 
-        return self.cosine_similarity([tf.expand_dims(r1, 1), r2]) / self.temperature
+        return representations
 
     @tf.function
     def calculate_similarity(self, sentence1, sentence2):

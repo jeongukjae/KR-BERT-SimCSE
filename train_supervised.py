@@ -5,12 +5,13 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_text as text
 from absl import app, flags, logging
-from scipy import stats
 from tensorflow.keras import mixed_precision
-from tfds_korean import klue_sts, korean_wikipedia_corpus, korsts  # noqa
+from tfds_korean import klue_sts, kornli, korsts  # noqa
+from tqdm import tqdm
 
 from model import BertConfig, BertModelForSimCSE
 from optimizer import LinearWarmupAndDecayScheduler
+from train_unsupervised import STSBenchmarkCallback, get_single_bert_input
 
 FLAGS = flags.FLAGS
 
@@ -23,12 +24,13 @@ def def_flags():
     flags.DEFINE_string("tensorboard_log_path", "logs", help="tensorboard log dir")
     flags.DEFINE_string("model_checkpoints", "models", help="model checkpoint path")
 
-    flags.DEFINE_integer("batch_size", 64, help="batch size")
-    flags.DEFINE_integer("total_steps", 25_000, help="Total steps")
-    flags.DEFINE_integer("max_sequence_length", 64, help="max sequence length")
+    flags.DEFINE_integer("batch_size", 128, help="batch size")
+    flags.DEFINE_integer("epochs", 3, help="epochs to train")
+    flags.DEFINE_integer("max_sequence_length", 48, help="max sequence length")
+    flags.DEFINE_integer("evaluation_frequency", 125, help="evaluation frequency (steps)")
     flags.DEFINE_float("temperature", 0.05, help="temperature for SimCSE")
     flags.DEFINE_float("warmup_ratio", 0.05, help="warm up ratio")
-    flags.DEFINE_float("learning_rate", 3e-5, help="Learning rate")
+    flags.DEFINE_float("learning_rate", 5e-5, help="Learning rate")
 
 
 def main(argv):
@@ -61,17 +63,9 @@ def main(argv):
         .batch(FLAGS.batch_size)
         .map(lambda x: {"sentence1": bert_input_fn(x["sentence1"]), "sentence2": bert_input_fn(x["sentence2"]), "score": x["score"]})
     )
-    ds = (
-        tfds.load("korean_wikipedia_corpus", split="train")
-        .flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x["content"]))
-        .shuffle(1_000_000, reshuffle_each_iteration=True)
-        .batch(FLAGS.batch_size)
-        .map(bert_input_fn, num_parallel_calls=tf.data.AUTOTUNE)
-        .map(create_label, num_parallel_calls=tf.data.AUTOTUNE)
-        .repeat()
-        .take(FLAGS.total_steps)
-    )
+    ds = get_supervised_dataset(bert_input_fn, FLAGS.batch_size)
     logging.info(f"batch_size: {FLAGS.batch_size}, element_spec: {ds.element_spec}")
+
     bert_config = BertConfig.from_json(FLAGS.config)
     logging.info(f"Config: L{bert_config.num_hidden_layers}, A{bert_config.num_attention_heads}, H{bert_config.hidden_size}.")
 
@@ -85,7 +79,8 @@ def main(argv):
         bert_model(batch)
     bert_model.summary()
 
-    total_steps = FLAGS.total_steps
+    steps_per_epoch = len([1 for _ in ds])
+    total_steps = steps_per_epoch * FLAGS.epochs
     warmup_steps = int(FLAGS.warmup_ratio * total_steps)
     logging.info(f"total steps: {total_steps}, warmup steps: {warmup_steps}")
     optimizer = tf.keras.optimizers.Adam(
@@ -96,87 +91,63 @@ def main(argv):
         ),
     )
     timestamp = int(time.time())
-    checkpoint_path = os.path.join(FLAGS.model_checkpoints, f"unsupervised-{timestamp}", "model-{epoch}")
-    tensorboard_logdir = os.path.join(FLAGS.tensorboard_log_path, f"unsupervised-{timestamp}")
-    bert_model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer=optimizer)
+    checkpoint_path = os.path.join(FLAGS.model_checkpoints, f"supervised-{timestamp}", "model-{epoch}")
+    tensorboard_logdir = os.path.join(FLAGS.tensorboard_log_path, f"supervised-{timestamp}")
+    bert_model.compile(
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        optimizer=optimizer,
+    )
+
     bert_model.fit(
         ds,
-        epochs=1,
-        steps_per_epoch=total_steps,
+        epochs=FLAGS.epochs,
         callbacks=[
             tf.keras.callbacks.TensorBoard(tensorboard_logdir),
-            STSBenchmarkCallback(klue_sts_ds, korsts_ds, model_save_dir=checkpoint_path),
+            STSBenchmarkCallback(klue_sts_ds, korsts_ds, model_save_dir=checkpoint_path, evaluation_frequency=FLAGS.evaluation_frequency),
         ],
     )
 
 
-def create_label(x):
-    batch_size = tf.shape(x["input_word_ids"])[0]
+def get_supervised_dataset(bert_input_fn, batch_size):
+    def _get_ds_from_split(split) -> tf.data.Dataset:
+        ds = tfds.load("kornli", split=split)
+
+        # label: [entailment, neutral, contradiction] => [0, 1, 2]
+        sentences = {}
+        for batch in tqdm(ds.as_numpy_iterator(), desc=f"reading {split}"):
+            sentence1: str = batch["sentence1"].decode("utf8")
+            sentence2: str = batch["sentence2"].decode("utf8")
+            gold_label: int = batch["gold_label"]
+
+            if sentence1 not in sentences:
+                sentences[sentence1] = {}
+
+            if gold_label != 1:  # not neutral
+                sentences[sentence1][gold_label] = sentence2
+
+        dataset_input = [(key, val[0], val[2]) for key, val in sentences.items() if 0 in val and 2 in val]
+        logging.info(f"dataset length of split {split}: {len(dataset_input)}")
+        return tf.data.Dataset.from_tensor_slices(dataset_input)
+
+    return (
+        _get_ds_from_split("mnli_train")
+        .concatenate(_get_ds_from_split("snli_train"))
+        .shuffle(500_000, reshuffle_each_iteration=True)
+        .batch(batch_size)
+        .map(lambda x: (bert_input_fn(x[:, 0]), bert_input_fn(x[:, 1]), bert_input_fn(x[:, 2])), num_parallel_calls=tf.data.AUTOTUNE)
+        .map(create_label, num_parallel_calls=tf.data.AUTOTUNE)
+    )
+
+
+def create_label(x1, x2, z):
+    batch_size = tf.shape(x1["input_word_ids"])[0]
     label = tf.expand_dims(tf.range(batch_size, dtype=tf.int64), -1)
 
     ctx = tf.distribute.get_replica_context()
     if ctx and ctx.num_replicas_in_sync != 1:
         label += ctx.replica_id_in_sync_group * batch_size
 
-    return x, label
-
-
-def get_single_bert_input(tokenizer: text.BertTokenizer, pad_id: int, cls_id: int, sep_id: int, max_sequence_length: int):
-    def _inner(x: tf.Tensor):
-        # x: tf.TensorSpec([None], dtype=tf.string)
-        batch_size = tf.size(x)
-        sentence = tokenizer.tokenize(x).merge_dims(-2, -1)
-
-        segments = tf.concat(
-            [tf.expand_dims(tf.repeat(cls_id, batch_size), -1), sentence, tf.expand_dims(tf.repeat(sep_id, batch_size), -1)],
-            axis=-1,
-        )
-
-        input_word_ids = segments.to_tensor(shape=[batch_size, max_sequence_length], default_value=pad_id)
-        input_mask = tf.ragged.map_flat_values(tf.ones_like, segments, dtype=tf.bool).to_tensor(
-            shape=[batch_size, max_sequence_length],
-            default_value=False,
-        )
-        input_type_ids = tf.zeros([batch_size, max_sequence_length], dtype=tf.int64)
-
-        return {
-            "input_word_ids": input_word_ids,
-            "input_mask": input_mask,
-            "input_type_ids": input_type_ids,
-        }
-
-    return _inner
-
-
-class STSBenchmarkCallback(tf.keras.callbacks.Callback):
-    def __init__(self, klue_sts_ds, korsts_ds, model_save_dir, evaluation_frequency=250):
-        self.klue_sts_ds = klue_sts_ds
-        self.korsts_ds = korsts_ds
-        self.evaluation_frequency = evaluation_frequency
-        self.model_save_dir = model_save_dir
-        self.current_step = 0
-
-    def on_train_batch_end(self, batch, logs):
-        self.current_step += 1
-
-        if self.current_step % self.evaluation_frequency == 0:
-            klue_metric = stats.pearsonr(*get_scores_and_similarities(self.model, self.klue_sts_ds))[0]
-            korsts_metric = stats.spearmanr(*get_scores_and_similarities(self.model, self.korsts_ds))[0]
-
-            print()
-            logging.info(f"step: {self.current_step}, KlueSTS PearsonR: {klue_metric}, KorSTS SpearmanR: {korsts_metric}")
-            self.model.save_weights(self.model_save_dir.format(epoch=self.current_step))
-
-
-def get_scores_and_similarities(model, ds):
-    scores = []
-    similarities = []
-
-    for item in ds:
-        similarities.append(model.calculate_similarity(item["sentence1"], item["sentence2"]))
-        scores.append(item["score"])
-
-    return tf.concat(scores, axis=0), tf.concat(similarities, axis=0)
+    return (x1, x2, z), label
 
 
 if __name__ == "__main__":
