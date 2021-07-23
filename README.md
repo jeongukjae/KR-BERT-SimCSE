@@ -76,6 +76,7 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 |SRoBERTa base*                |trained on KorNLI          |bi encoding   |74.19|
 |SRoBERTa base*                |trained on KorSTS          |bi encoding   |78.94|
 |SRoBERTa base*                |trained on KorNLI -> KorSTS|bi encoding   |80.29|
+|SRoBERTa large*               |trained on KorNLI          |bi encoding   |75.46|
 |SRoBERTa large*               |trained on KorSTS          |bi encoding   |79.55|
 |SRoBERTa large*               |trained on KorNLI -> KorSTS|bi encoding   |80.49|
 |SRoBERTa base*                |trained on KorSTS          |cross encoding|83.00|
