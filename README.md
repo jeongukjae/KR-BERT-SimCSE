@@ -50,8 +50,8 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 |model|||100 X Spearman correlation|
 |---|---|---|--:|
-|KR-BERT base SimCSE           |unsupervised               |bi encoding|79.99|
-|KR-BERT base SimCSE-supervised|trained on KorNLI          |bi encoding|84.88|
+|KR-BERT base<br/>SimCSE           |unsupervised               |bi encoding|79.99|
+|KR-BERT base<br/>SimCSE-supervised|trained on KorNLI          |bi encoding|84.88|
 |||||
 |SRoBERTa base*                |unsupervised               |bi encoding|63.34|
 |SRoBERTa base*                |trained on KorNLI          |bi encoding|76.48|
@@ -67,8 +67,8 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 |model|||100 X Spearman correlation|
 |---|---|---|--:|
-|KR-BERT base SimCSE           |unsupervised               |bi encoding   |73.25|
-|KR-BERT base SimCSE-supervised|trained on KorNLI          |bi encoding   |80.72|
+|KR-BERT base<br/>SimCSE           |unsupervised               |bi encoding   |73.25|
+|KR-BERT base<br/>SimCSE-supervised|trained on KorNLI          |bi encoding   |80.72|
 |||||
 |SRoBERTa base*                |unsupervised               |bi encoding   |48.96|
 |SRoBERTa base*                |trained on KorNLI          |bi encoding   |74.19|
@@ -85,8 +85,8 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 
 |model|||100 X Pearson's correlation|
 |---|---|---|--:|
-|KR-BERT base SimCSE           |unsupervised                   |bi encoding   |74.45|
-|KR-BERT base SimCSE-supervised|trained on KorNLI              |bi encoding   |79.42|
+|KR-BERT base<br/>SimCSE           |unsupervised                   |bi encoding   |74.45|
+|KR-BERT base<br/>SimCSE-supervised|trained on KorNLI              |bi encoding   |79.42|
 |||||
 |KR-BERT base*                 |supervised                     |cross encoding|87.50|
 
