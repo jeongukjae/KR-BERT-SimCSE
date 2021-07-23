@@ -1,6 +1,6 @@
 # KR-BERT-SimCSE
 
-This repository contains codes for SimCSE using TensorFlow 2 and KR-BERT.
+Implementing SimCSE using TensorFlow 2 and KR-BERT.
 
 ## Training
 
@@ -24,11 +24,13 @@ I used [Korean Wikipedia Corpus](https://github.com/jeongukjae/korean-wikipedia-
 
 The hyperparameters were not tuned and mostly followed the values in the paper.
 
-### Supervised (Train on KorNLI)
+### Supervised
 
 ```
 python train_supervised.py --mixed_precision
 ```
+
+I used [KorNLI](https://github.com/kakaobrain/KorNLUDatasets) for supervised training. (Check out [tfds-korean catalog page](https://jeongukjae.github.io/tfds-korean/datasets/kornli.html))
 
 * Settings
     * batch size 128
