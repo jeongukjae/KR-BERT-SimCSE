@@ -57,9 +57,10 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 |||||
 |SRoBERTa base*                |unsupervised               |bi encoding|63.34|
 |SRoBERTa base*                |trained on KorNLI          |bi encoding|76.48|
-|SRoBERTa large*               |trained on KorNLI          |bi encoding|77.95|
 |SRoBERTa base*                |trained on KorSTS          |bi encoding|83.68|
 |SRoBERTa base*                |trained on KorNLI -> KorSTS|bi encoding|83.54|
+|||||
+|SRoBERTa large*               |trained on KorNLI          |bi encoding|77.95|
 |SRoBERTa large*               |trained on KorSTS          |bi encoding|84.74|
 |SRoBERTa large*               |trained on KorNLI -> KorSTS|bi encoding|84.21|
 
@@ -76,9 +77,11 @@ The hyperparameters were not tuned and mostly followed the values in the paper.
 |SRoBERTa base*                |trained on KorNLI          |bi encoding   |74.19|
 |SRoBERTa base*                |trained on KorSTS          |bi encoding   |78.94|
 |SRoBERTa base*                |trained on KorNLI -> KorSTS|bi encoding   |80.29|
+|||||
 |SRoBERTa large*               |trained on KorNLI          |bi encoding   |75.46|
 |SRoBERTa large*               |trained on KorSTS          |bi encoding   |79.55|
 |SRoBERTa large*               |trained on KorNLI -> KorSTS|bi encoding   |80.49|
+|||||
 |SRoBERTa base*                |trained on KorSTS          |cross encoding|83.00|
 |SRoBERTa large*               |trained on KorSTS          |cross encoding|85.27|
 
